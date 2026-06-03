@@ -5,179 +5,102 @@ import os.path
 from PIL import Image, ImageOps
 from processing_list import *
 
-#Area open folder and select image
-file_list_column=[
-    [
-        sg.Text("Open Image Folder"),
-    ],
-    [
-        sg.In(size=(20,1),enable_events=True,key="ImgFolder"),
-        sg.FolderBrowse(),
-    ],
-    [
-        sg.Text("Choose an image from list"),
-    ],
-    [
-        sg.Listbox(
-            values=[], enable_events=True, size=(18,10), key="ImgList"
-        )
-    ],
+sg.set_options(font=('Segoe UI', 10))
+
+def section_header(text):
+    return sg.Text(text, font=('Segoe UI Semibold', 10), pad=(0,6))
+
+def section_sep():
+    return sg.HSeparator(pad=(0,4))
+
+def panel_btn(text, key, size=(22,1)):
+    return sg.Button(text, size=size, key=key, font=('Segoe UI', 9), pad=(0,2))
+
+left_panel = [
+    [sg.Text("EXPLORER", font=('Segoe UI Semibold', 9), pad=(0,4))],
+    [sg.In(size=(22,1), enable_events=True, key="ImgFolder", pad=(0,2)),
+     sg.FolderBrowse("...", size=(3,1))],
+    [sg.Listbox(values=[], enable_events=True, size=(26,20), key="ImgList", pad=(0,4))],
+    [section_sep()],
+    [sg.Text("", size=(20,1), key="ImgSize", font=('Segoe UI', 9))],
+    [sg.Text("", size=(20,1), key="ImgColorDepth", font=('Segoe UI', 9))],
 ]
 
-#Area viewer image input
-image_viewer_column=[
-    [sg.Text("Image Input")],
-    [sg.Text(size=(40,1),key="FilepathImgInput")],
-    [sg.Image(key="ImgInputViewer")],
+canvas_area = [
+    [sg.Column(
+        [[sg.Text("INPUT", font=('Segoe UI Semibold', 9))],
+         [sg.Text("", size=(50,1), key="FilepathImgInput", font=('Segoe UI', 8))],
+         [sg.Image(key="ImgInputViewer")]],
+        pad=(4,4), expand_x=True, expand_y=True, element_justification='center'
+    ),
+    sg.Column(
+        [[sg.Text("OUTPUT", font=('Segoe UI Semibold', 9))],
+         [sg.Text("", size=(50,1), key="ImgProcessingType", font=('Segoe UI', 8))],
+         [sg.Image(key="ImgOutputViewer")]],
+        pad=(4,4), expand_x=True, expand_y=True, element_justification='center'
+    )],
 ]
 
-#Area image info dan Tombol list of processing
-list_processing=[
-    [
-        sg.Text("Image Information"),
-    ],
-    [
-        sg.Text(size=(20,1),key="ImgSize")  
-    ],
-    [
-        sg.Text(size=(20,1),key="ImgColorDepth"),
-    ],
-    [
-        sg.Text("List of Processing"),
-    ],
-    [
-        sg.Button("Image Negative", size=(20,1),key="ImgNegative"),
-    ],
-    [
-        sg.Button("Rotate CW", size=(9,1), key="ImgRotateCW"),
-        sg.Button("Rotate CCW", size=(9,1), key="ImgRotateCCW"),
-    ],
-    [
-        sg.Button("Flip H", size=(9,1), key="ImgFlipH"),
-        sg.Button("Flip V", size=(9,1), key="ImgFlipV"),
-    ],
-    [
-        sg.Text("Brightness:"),
-        sg.Slider(range=(-255, 255), default_value=0, orientation='h', size=(16, 15), enable_events=True, key="-BRIGHT_SLIDER-")
-    ],
-    [
-        sg.Text("Power Law:"),
-        sg.Slider(range=(0.1, 5.0), default_value=1.0, resolution=0.1, orientation='h', size=(16, 15), enable_events=True, key="-GAMMA_SLIDER-")
-    ],
-    [
-        sg.Button("Log Transform", size=(20,1), key="ImgLog"),
-    ],
-    [
-        sg.Text("Blending"),
-    ],
-    [
-        sg.In(size=(15,1), enable_events=True, key="ImgBlend2Path"),
-        sg.FileBrowse("Browse", file_types=(("Image Files", "*.png *.jpg *.jpeg *.gif"),)),
-    ],
-    [
-        sg.Text("Alpha:"),
-        sg.Slider(range=(0.0, 1.0), default_value=0.5, resolution=0.01, orientation='h', size=(15, 15), key="-BLEND_SLIDER-"),
-    ],
-    [
-        sg.Button("Blend Images", size=(20,1), key="ImgBlend"),
-    ],
-    [
-        sg.HSeparator(),
-    ],
-    [
-        sg.Text("Resampling"),
-    ],
-    [
-        sg.Text("W:", size=(3,1)), sg.Input(default_text="300", size=(6,1), key="ResampleW"),
-        sg.Text("H:", size=(3,1)), sg.Input(default_text="300", size=(6,1), key="ResampleH"),
-    ],
-    [
-        sg.Button("Resample", size=(20,1), key="ImgResample"),
-    ],
-    [
-        sg.HSeparator(),
-    ],
-    [
-        sg.Text("Scaling"),
-    ],
-    [
-        sg.Text("Factor:"),
-        sg.Slider(range=(0.1, 4.0), default_value=1.0, resolution=0.1,
-                  orientation='h', size=(16, 15), enable_events=True,
-                  key="-SCALE_SLIDER-")
-    ],
-    [
-        sg.HSeparator(),
-    ],
-    [
-        sg.Text("Filtering"),
-    ],
-    [
-        sg.Text("Kernel:"),
-        sg.Combo([3, 5, 7], default_value=3, size=(4,1), key="FilterKernel"),
-    ],
-    [
-        sg.Button("Median Filter", size=(20,1), key="ImgMedian"),
-    ],
-    [
-        sg.Button("Mean Filter",   size=(20,1), key="ImgMean"),
-    ],
-    [
-        sg.Button("Gaussian Filter", size=(20,1), key="ImgGaussian"),
-    ],
-    [
-        sg.HSeparator(),
-    ],
-    [
-        sg.Text("Edge Detection"),
-    ],
-    [
-        sg.Button("Sobel Filter", size=(20,1), key="ImgSobel"),
-    ],
-    [
-        sg.Button("Prewitt Filter", size=(20,1), key="ImgPrewitt"),
-    ],
-    [
-        sg.Button("Robert Cross", size=(20,1), key="ImgRobert"),
-    ],
-    [
-        sg.Text("Compass:"),
-        sg.Combo(["N","NE","E","SE","S","SW","W","NW","ALL"], default_value="ALL", size=(5,1), key="CompassDir"),
-    ],
-    [
-        sg.Button("Compass Filter", size=(20,1), key="ImgCompass"),
-    ],
-    [
-        sg.HSeparator(),
-    ],
-    [
-        sg.Button("Reset", size=(20,1), key="ImgReset"),
-    ],
+right_tools = [
+    [section_header("ADJUSTMENTS")],
+    [panel_btn("Image Negative", "ImgNegative")],
+    [sg.Text("Brightness", font=('Segoe UI', 9))],
+    [sg.Slider(range=(-255,255), default_value=0, orientation='h', size=(18,14),
+               enable_events=True, key="-BRIGHT_SLIDER-", pad=(0,0))],
+    [sg.Text("Power Law (Gamma)", font=('Segoe UI', 9))],
+    [sg.Slider(range=(0.1,5.0), default_value=1.0, resolution=0.1, orientation='h', size=(18,14),
+               enable_events=True, key="-GAMMA_SLIDER-", pad=(0,0))],
+    [panel_btn("Log Transform", "ImgLog")],
+    [section_sep()],
+    [section_header("TRANSFORM")],
+    [panel_btn("Rotate CW", "ImgRotateCW", (10,1)), panel_btn("Rotate CCW", "ImgRotateCCW", (10,1))],
+    [panel_btn("Flip H", "ImgFlipH", (10,1)), panel_btn("Flip V", "ImgFlipV", (10,1))],
+    [sg.Text("Scale Factor", font=('Segoe UI', 9))],
+    [sg.Slider(range=(0.1,4.0), default_value=1.0, resolution=0.1, orientation='h', size=(18,14),
+               enable_events=True, key="-SCALE_SLIDER-", pad=(0,0))],
+    [sg.Text("Resample", font=('Segoe UI', 9)),
+     sg.Text("W:"), sg.Input("300", size=(5,1), key="ResampleW"),
+     sg.Text("H:"), sg.Input("300", size=(5,1), key="ResampleH")],
+    [panel_btn("Resample", "ImgResample")],
+    [section_sep()],
+    [section_header("BLENDING")],
+    [sg.In(size=(17,1), enable_events=True, key="ImgBlend2Path", pad=(0,2)),
+     sg.FileBrowse("...", size=(3,1),
+                   file_types=(("Image Files", "*.png *.jpg *.jpeg *.gif"),))],
+    [sg.Text("Alpha", font=('Segoe UI', 9))],
+    [sg.Slider(range=(0.0,1.0), default_value=0.5, resolution=0.01, orientation='h', size=(18,14),
+               key="-BLEND_SLIDER-", pad=(0,0))],
+    [panel_btn("Blend Images", "ImgBlend")],
+    [section_sep()],
+    [section_header("FILTERING")],
+    [sg.Text("Kernel:", font=('Segoe UI', 9)), sg.Combo([3,5,7], default_value=3, size=(4,1), key="FilterKernel")],
+    [panel_btn("Median Filter", "ImgMedian")],
+    [panel_btn("Mean Filter", "ImgMean")],
+    [panel_btn("Gaussian Filter", "ImgGaussian")],
+    [section_sep()],
+    [section_header("EDGE DETECTION")],
+    [panel_btn("Sobel", "ImgSobel", (10,1)), panel_btn("Prewitt", "ImgPrewitt", (10,1))],
+    [panel_btn("Robert Cross", "ImgRobert")],
+    [sg.Text("Compass:", font=('Segoe UI', 9)),
+     sg.Combo(["N","NE","E","SE","S","SW","W","NW","ALL"], default_value="ALL", size=(5,1), key="CompassDir")],
+    [panel_btn("Compass Filter", "ImgCompass")],
+    [section_sep()],
+    [panel_btn("Reset", "ImgReset")],
 ]
 
-#Area viewer image output
-image_viewer_column2=[
-    [sg.Text("Image Processing Output:")],
-    [sg.Text(size=(40,1),key="ImgProcessingType")],
-    [sg.Image(key="ImgOutputViewer")],
-]
-
-#Group full layout
-layout=[
+layout = [
     [
-        sg.Column(file_list_column),
+        sg.Column(left_panel, vertical_alignment='top', pad=(0,0), expand_y=True, size=(220, None)),
         sg.VSeparator(),
-        sg.Column(image_viewer_column),
+        sg.Column(canvas_area, expand_x=True, expand_y=True, pad=(0,0), element_justification='center'),
         sg.VSeparator(),
-        sg.Column(list_processing),
-        sg.VSeparator(),
-        sg.Column(image_viewer_column2),
+        sg.Column(right_tools, vertical_alignment='top', pad=(0,0), expand_y=True,
+                  scrollable=True, vertical_scroll_only=True, size=(240, None)),
     ]
 ]
 
-window = sg.Window("Mini Image Editor",layout)
+window = sg.Window("Mini Image Editor", layout, resizable=True, finalize=True, margins=(0,0), size=(1280,720))
 
-#Run the event loop
 out_files = ["out_a.png", "out_b.png"]
 out_idx = 0
 
@@ -189,51 +112,40 @@ def save_output(img, window):
     window["ImgOutputViewer"].update(filename=path)
 
 while True:
-    event, values =window.read()
-    
-    if event == "Exit" or event == sg.WIN_CLOSED:
-        break
-    
-#List files in the folder
-    if event =="ImgFolder":
-        folder =values["ImgFolder"]
-        
-        try:
-            #Get list of files
-            file_list=os.listdir(folder)
-        except:
-            file_list=[]
-            
-        fnames=[
-            f
-            for f in file_list
-            if os.path.isfile(os.path.join(folder, f))
-            and f.lower(). endswith((".png",".gif"))
-        ]
+    event, values = window.read()
 
-        window["ImgList"].update(fnames)
-    elif event == "ImgList": #A file chosen from listbox
+    if event in ("Exit", sg.WIN_CLOSED):
+        break
+
+    if event == "ImgFolder":
+        folder = values["ImgFolder"]
         try:
-            filename = os.path.join(
-                values["ImgFolder"],values["ImgList"][0]
-            )
-            window["FilepathImgInput"].update(filename)
+            file_list = os.listdir(folder)
+        except:
+            file_list = []
+        fnames = [
+            f for f in file_list
+            if os.path.isfile(os.path.join(folder, f))
+            and f.lower().endswith((".png", ".gif", ".jpg", ".jpeg", ".bmp"))
+        ]
+        window["ImgList"].update(fnames)
+
+    elif event == "ImgList":
+        try:
+            filename = os.path.join(values["ImgFolder"], values["ImgList"][0])
+            window["FilepathImgInput"].update(values["ImgList"][0])
             window["ImgInputViewer"].update(filename=filename)
-            window["ImgProcessingType"].update(filename)
+            window["ImgProcessingType"].update("Original")
             window["ImgOutputViewer"].update(filename=filename)
-            img_input=Image.open(filename)
-            #img_input.show
-            
-            #Size
-            img_width, img_height=img_input.size
-            window["ImgSize"].update("Image Size :"+str(img_width)+"x"+str(img_height))
-            
-            #Color Depth
-            mode_to_coldepth={"1":1,"L":8,"P":8,"RGB":24,"RGBA":32,"CMYK":32, "YCbCr":24,"LAB":24,"HSV":24,"I":32,"F":32}
-            coldepth=mode_to_coldepth[img_input.mode]
-            window["ImgColorDepth"].update("Color Depth :"+str(coldepth))
+            img_input = Image.open(filename)
+            img_width, img_height = img_input.size
+            window["ImgSize"].update(f"Size: {img_width} x {img_height} px")
+            mode_to_coldepth = {"1":1,"L":8,"P":8,"RGB":24,"RGBA":32,"CMYK":32,"YCbCr":24,"LAB":24,"HSV":24,"I":32,"F":32}
+            coldepth = mode_to_coldepth[img_input.mode]
+            window["ImgColorDepth"].update(f"Depth: {coldepth}-bit")
         except:
             pass
+
     elif event == "ImgRotateCW":
         try:
             window["ImgProcessingType"].update("Rotate CW")
@@ -282,7 +194,7 @@ while True:
         try:
             new_w = int(values["ResampleW"])
             new_h = int(values["ResampleH"])
-            window["ImgProcessingType"].update(f"Resampling -> {new_w}x{new_h} px")
+            window["ImgProcessingType"].update(f"Resample {new_w}x{new_h}")
             img_output = ImgResample(img_input, coldepth, new_w, new_h)
             save_output(img_output, window)
         except Exception as e:
@@ -290,8 +202,8 @@ while True:
 
     elif event == "-SCALE_SLIDER-":
         try:
-            factor = float(values["-SCALE_SLIDER-"])  # faktor zoom
-            window["ImgProcessingType"].update(f"Scaling x{factor:.1f}")
+            factor = float(values["-SCALE_SLIDER-"])
+            window["ImgProcessingType"].update(f"Scale x{factor:.1f}")
             img_output = ImgScaling(img_input, coldepth, factor)
             save_output(img_output, window)
         except:
@@ -304,7 +216,7 @@ while True:
             save_output(img_output, window)
         except:
             pass
-    
+
     elif event == "-BRIGHT_SLIDER-":
         try:
             val = int(values["-BRIGHT_SLIDER-"])
@@ -345,7 +257,7 @@ while True:
     elif event == "ImgMedian":
         try:
             k = int(values["FilterKernel"])
-            window["ImgProcessingType"].update(f"Median Filter {k}x{k}")
+            window["ImgProcessingType"].update(f"Median {k}x{k}")
             img_output = ImgMedianFilter(img_input, coldepth, k)
             save_output(img_output, window)
         except:
@@ -354,7 +266,7 @@ while True:
     elif event == "ImgMean":
         try:
             k = int(values["FilterKernel"])
-            window["ImgProcessingType"].update(f"Mean Filter {k}x{k}")
+            window["ImgProcessingType"].update(f"Mean {k}x{k}")
             img_output = ImgMeanFilter(img_input, coldepth, k)
             save_output(img_output, window)
         except:
@@ -363,7 +275,7 @@ while True:
     elif event == "ImgGaussian":
         try:
             k = int(values["FilterKernel"])
-            window["ImgProcessingType"].update(f"Gaussian Filter {k}x{k}")
+            window["ImgProcessingType"].update(f"Gaussian {k}x{k}")
             img_output = ImgGaussianFilter(img_input, coldepth, k)
             save_output(img_output, window)
         except:
@@ -387,7 +299,7 @@ while True:
 
     elif event == "ImgRobert":
         try:
-            window["ImgProcessingType"].update("Robert Cross Filter")
+            window["ImgProcessingType"].update("Robert Cross")
             img_output = ImgRobertCrossFilter(img_input, coldepth)
             save_output(img_output, window)
         except:
@@ -396,10 +308,10 @@ while True:
     elif event == "ImgCompass":
         try:
             d = values["CompassDir"]
-            window["ImgProcessingType"].update(f"Compass Filter ({d})")
+            window["ImgProcessingType"].update(f"Compass ({d})")
             img_output = ImgCompassFilter(img_input, coldepth, d)
             save_output(img_output, window)
         except:
             pass
-        
+
 window.close()
